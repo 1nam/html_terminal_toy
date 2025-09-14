@@ -41,7 +41,7 @@ body {
   margin-right: 8px;
 }
 #input-wrapper { display: flex; }
-#typed { color: #111111; }
+#typed { color: #FFA500; } /* Light orange for user input */
 #cursor { color: #FF8C00; animation: blink 1s step-start infinite; }
 @keyframes blink { 50% { opacity: 0; } }
 #terminal::-webkit-scrollbar { width: 8px; }
@@ -66,7 +66,7 @@ let history = JSON.parse(localStorage.getItem('terminalHistory')||"[]");
 let historyIndex = history.length;
 let runningIntervals = [];
 
-// Show clickable ChatGPT credit at top
+// Clickable ChatGPT credit
 output.innerHTML += `<div style="color:#00BFFF; font-style: italic; text-align:center;">
 Fun terminal built with the help of <a href="https://chat.openai.com/" target="_blank">AI ChatGPT</a>
 </div><br>`;
@@ -104,7 +104,6 @@ function getCurrentDir() {
   return dir;
 }
 
-// Generate prompt
 function getPrompt() {
   return `user@fun:${currentPath.join("/")}$`;
 }
