@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fun Terminal</title>
+<style>
+body {
+  background: #1a1a1a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+}
+#terminal {
+  width: 80%;
+  max-width: 800px;
+  height: 500px;
+  background: #000000;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 0 40px rgba(0, 191, 255, 0.5);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+#output {
+  flex-grow: 1;
+  color: #00BFFF;
+  margin-bottom: 10px;
+  overflow-wrap: break-word;
+}
+#input-line {
+  display: flex;
+  align-items: center;
+}
+#prompt {
+  color: #FF8C00;
+  margin-right: 8px;
+}
+#input-wrapper { display: flex; }
+#typed { color: #111111; }
+#cursor { color: #FF8C00; animation: blink 1s step-start infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+#terminal::-webkit-scrollbar { width: 8px; }
+#terminal::-webkit-scrollbar-thumb { background: rgba(0,191,255,0.5); border-radius: 8px; }
+#output div { transition: all 0.2s ease-in-out; white-space: pre; }
+a { color: #00BFFF; text-decoration: underline; }
+</style>
+</head>
+<body>
+<div id="terminal">
+  <div id="output"></div>
+  <div id="input-line">
+    <span id="prompt">user@fun:~$</span>
+    <span id="input-wrapper"><span id="typed"></span><span id="cursor">|</span></span>
+  </div>
+</div>
+<script>
+const typedSpan = document.getElementById('typed');
+const output = document.getElementById('output');
+let inputText = '';
+let history = JSON.parse(localStorage.getItem('terminalHistory')||"[]");
+let historyIndex = history.length;
+let runningIntervals = [];
+
+// Show clickable ChatGPT credit at top
+output.innerHTML += `<div style="color:#00BFFF; font-style: italic; text-align:center;">
+Fun terminal built with the help of <a href="https://chat.openai.com/" target="_blank">AI ChatGPT</a>
+</div><br>`;
+
+// Fake file system with folders
+const fileSystem = {
+  "/": {
+    type: "dir",
+    contents: {
+      "README.txt": { type: "file", content: "Welcome to the Fun Terminal! Type 'help' to see commands." },
+      "notes.txt": { type: "file", content: "Sample file. Use 'cat notes.txt' to read it." },
+      "src": {
+        type: "dir",
+        contents: {
+          "index.js": { type: "file", content: "// JS goes here" },
+          "style.css": { type: "file", content: "/* CSS goes here */" }
+        }
+      },
+      "docs": {
+        type: "dir",
+        contents: {
+          "manual.txt": { type: "file", content: "This is the documentation." }
+        }
+      }
+    }
+  }
+};
+
+let currentPath = ["/"]; // Start at root
+function getCurrentDir() {
+  let dir = fileSystem["/"];
+  for (let i = 1; i < currentPath.length; i++) {
+    dir = dir.contents[currentPath[i]];
+  }
+  return dir;
+}
+
+// Generate prompt
+function getPrompt() {
+  return `user@fun:${currentPath.join("/")}$`;
+}
+document.getElementById('prompt').textContent = getPrompt();
+
+// Commands
+const commands = {
+  help:"Available commands: help, about, date, clear, ls, cd [folder], cat [file], lolcat [text], cmatrix, fortune, banner [text], party, stop, waterboy",
+  about:"This is a fun modern terminal built with HTML, CSS & JS!",
+  date:()=>new Date().toString(),
+  clear:()=>{output.innerHTML='';return '';},
+  ls:()=>{const dir=getCurrentDir();return Object.keys(dir.contents).join('  ');},
+  cd:(args)=>{if(!args[0])return"Usage: cd [folder]";const dir=getCurrentDir();const target=args[0];if(target===".."){if(currentPath.length>1)currentPath.pop();return"";}else if(dir.contents[target]&&dir.contents[target].type==="dir"){currentPath.push(target);return"";}else{return`cd: ${target}: No such directory`;}},
+  cat:(args)=>{if(!args[0])return"Specify a file: cat [filename]";const dir=getCurrentDir();if(dir.contents[args[0]]&&dir.contents[args[0]].type==="file")return dir.contents[args[0]].content;return`File '${args[0]}' not found.`;},
+  lolcat:(args)=>{if(!args.length)return"Usage: lolcat [text]";const text=args.join(' ');const colors=['#FF0000','#FF7F00','#FFFF00','#00FF00','#0000FF','#4B0082','#9400D3'];let r='';for(let i=0;i<text.length;i++){r+=`<span style="color:${colors[i%colors.length]}">${text[i]}</span>`}return r;},
+  cmatrix:()=>{output.innerHTML+='<div id="matrix"></div>';const div=document.getElementById('matrix');const cols=30,rows=20,chars="01ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";let interval=setInterval(()=>{let line='';for(let i=0;i<cols;i++){line+=`<span style="color:#00FF00">${chars[Math.floor(Math.random()*chars.length)]}</span>`}div.innerHTML+=line+'<br>';if(div.childElementCount>rows){div.innerHTML=div.innerHTML.split('<br>').slice(1).join('<br>')}output.scrollTop=output.scrollHeight},100);runningIntervals.push(interval);return"CMatrix running... (10s)";},
+  fortune:()=>{const q=["You will have a great day!","Why do programmers prefer dark mode? Because light attracts bugs.","Fortune favors the bold.","Never forget: semicolons matter.","A smooth sea never made a skilled sailor."];return q[Math.floor(Math.random()*q.length)];},
+  banner:(args)=>{if(!args.length)return"Usage: banner [text]";const text=args.join(' ').toUpperCase();const ascii={A:["  A  "," A A ","AAAAA","A   A","A   A"],B:["BBBB ","B   B","BBBB ","B   B","BBBB "]," ":["     ","     ","     ","     ","     "]};let r="";for(let row=0;row<5;row++){for(let c of text){r+=ascii[c]?ascii[c][row]:"???"+"  "}r+="\n"}return r;},
+  party:()=>{let colors=["#FF0000","#FF7F00","#FFFF00","#00FF00","#0000FF","#4B0082","#9400D3"],i=0;let interval=setInterval(()=>{output.style.color=colors[i%colors.length];i++},200);runningIntervals.push(interval);setTimeout(()=>{clearInterval(interval);output.style.color="#00BFFF"},5000);return"Party mode activated! 🌈";},
+  stop:()=>{runningIntervals.forEach(clearInterval);runningIntervals=[];output.style.color="#00BFFF";return"All effects stopped.";},
+  waterboy:()=>{const quotes=["You can code it! 💻","Git commit it! 📝","Debug it! 🐛","Push it to production! 🚀","Refactor it! 🔧","Merge it! 🔀","Test it! ✅","You can deploy it! 🌟","Stack Overflow will help you! 📚","You can automate it! 🤖"];return quotes[Math.floor(Math.random()*quotes.length)];}
+};
+
+// Log command
+function logCommand(cmd){history.push(cmd);localStorage.setItem('terminalHistory',JSON.stringify(history));}
+
+// Typing effect
+function typeOutput(text,callback){let i=0;const interval=setInterval(()=>{output.innerHTML+=text[i];i++;output.scrollTop=output.scrollHeight;if(i>=text.length){clearInterval(interval);if(callback)callback();output.innerHTML+='<br>'}},20);}
+
+// Run command
+function runCommand(cmdInput){
+  logCommand(cmdInput);
+  const [cmd,...args]=cmdInput.split(' ');
+  output.innerHTML+=`<div><span>$ ${cmdInput}</span></div>`;
+  let result=`'${cmd}' is not a command. Type 'help' for commands.`;
+  if(commands[cmd]){result=typeof commands[cmd]==='function'?commands[cmd](args):commands[cmd];}
+  document.getElementById('prompt').textContent=getPrompt();
+  typeOutput(result);
+}
+
+// Input handling
+document.addEventListener('keydown',(e)=>{
+  if(e.key.length===1){inputText+=e.key;}
+  else if(e.key==='Backspace'){inputText=inputText.slice(0,-1);}
+  else if(e.key==='Enter'){runCommand(inputText);inputText='';historyIndex=history.length;}
+  else if(e.key==='ArrowUp'){if(historyIndex>0){historyIndex--;inputText=history[historyIndex];}}
+  else if(e.key==='ArrowDown'){if(historyIndex<history.length-1){historyIndex++;inputText=history[historyIndex];}else{historyIndex=history.length;inputText='';}}
+  typedSpan.textContent=inputText;
+});
+</script>
+</body>
+</html>
